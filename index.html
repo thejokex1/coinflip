@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Coin Flip Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f2f2f2;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: black;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+        }
+        .left-side, .right-side {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .coin-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            perspective: 1000px;
+        }
+        .coin {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: absolute;
+            transform-style: preserve-3d;
+            transform-origin: center;
+            transform: rotateY(0deg);
+            transition: transform 2s ease-out;
+        }
+        .face {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            backface-visibility: hidden;
+            border: 5px solid black;
+        }
+        .heads {
+            background: #4CAF50;
+            transform: rotateY(0deg) translateZ(10px);
+        }
+        .tails {
+            background: #FF5733;
+            transform: rotateY(180deg) translateZ(10px);
+        }
+        .balance, .bet-options, .history, .message {
+            margin: 10px 0;
+            text-align: center;
+        }
+        .message {
+            color: #ff4d4d;
+        }
+        .bet-options {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .bet-options input {
+            width: 100px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            border-radius: 5px;
+            outline: none;
+            -moz-appearance: textfield;
+        }
+        .bet-options input::-webkit-outer-spin-button,
+        .bet-options input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .bet-options .max-button {
+            margin-left: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            color: #666;
+            background: none;
+            border: none;
+            text-decoration: underline;
+            outline: none;
+        }
+        .bet-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .heads-button, .tails-button {
+            width: 80px;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            transition: background 0.3s ease;
+        }
+        .heads-button {
+            background: #4CAF50;
+            color: white;
+        }
+        .tails-button {
+            background: #FF5733;
+            color: white;
+        }
+        .heads-button:hover {
+            background: #388E3C;
+        }
+        .tails-button:hover {
+            background: #E64A19;
+        }
+        .history {
+            border: 1px solid black;
+            border-radius: 5px;
+            padding: 10px;
+            width: 400px;
+        }
+        table {
+            width: 100%;
+            text-align: center;
+            table-layout: fixed;
+            margin-top: 10px;
+        }
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+        }
+        .pagination {
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+        }
+        .pagination button {
+            padding: 5px 10px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .pagination button.active {
+            background: #4285f4;
+            color: white;
+            border: 1px solid #4285f4;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .profit {
+            background-color: #b8e6b8; /* Pastel green */
+        }
+        .loss {
+            background-color: #f2b0b0; /* Pastel red */
+        }
+        .chart-container {
+            width: 500px;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-side">
+            <div class="coin-container">
+                <div id="coin" class="coin">
+                    <div class="face heads"></div>
+                    <div class="face tails"></div>
+                </div>
+            </div>
+            <div class="balance">Balance: $<span id="balance">100</span></div>
+            <div class="bet-options">
+                <input type="number" id="betAmount" placeholder="0$" min="1">
+                <button class="max-button" onclick="maxBet()">Max</button>
+            </div>
+            <div class="bet-buttons">
+                <button class="heads-button" onclick="placeBet('heads')">Green</button>
+                <button class="tails-button" onclick="placeBet('tails')">Red</button>
+            </div>
+            <div class="message" id="message"></div>
+        </div>
+
+        <div class="right-side">
+            <div class="history">
+                <h3>Bet History</h3>
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Bet Amount</th>
+                            <th>Option</th>
+                            <th>Result</th>
+                            <th>Balance After</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+                <div class="pagination" id="pagination"></div>
+            </div>
+            <div class="chart-container">
+                <canvas id="balanceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let balance = 100;
+        let startingBalance = 100; // Track the starting balance
+        let isFlipping = false;
+        let betHistory = [];
+        const balanceElement = document.getElementById('balance');
+        const messageElement = document.getElementById('message');
+        const historyBody = document.getElementById('historyBody');
+        const paginationElement = document.getElementById('pagination');
+        const coinElement = document.getElementById('coin');
+        const rowsPerPage = 5;
+        let currentPage = 1;
+
+        // Chart Data
+        const balanceChartCtx = document.getElementById('balanceChart').getContext('2d');
+        let balanceData = [startingBalance];
+        let balanceLabels = ['Start'];
+
+        // Create the initial chart
+        const balanceChart = new Chart(balanceChartCtx, {
+            type: 'line',
+            data: {
+                labels: balanceLabels,
+                datasets: [{
+                    data: balanceData,
+                    backgroundColor: 'rgba(66, 133, 244, 0.2)',
+                    borderColor: '#4285f4',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false // Remove the legend
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true },
+                    x: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Function to place the maximum bet
+        function maxBet() {
+            if (!isFlipping) {
+                document.getElementById('betAmount').value = balance;
+            }
+        }
+
+        // Function to place a bet
+        function placeBet(betOption) {
+            let betAmount = parseInt(document.getElementById('betAmount').value);
+
+            if (isNaN(betAmount) || betAmount <= 0) {
+                messageElement.textContent = 'Invalid bet amount!';
+                return;
+            }
+            if (betAmount > balance) {
+                messageElement.textContent = 'No funds! Refresh.';
+                return;
+            }
+
+            if (isFlipping) return;
+            isFlipping = true;
+            messageElement.textContent = ''; // Clear messages
+
+            balance -= betAmount;
+            balanceElement.textContent = balance;
+
+            const outcome = Math.random() < 0.5 ? 'heads' : 'tails';
+
+            coinElement.style.transition = 'none';
+            coinElement.style.transform = `rotateY(0deg)`;
+            setTimeout(() => {
+                coinElement.style.transition = 'transform 2s ease-out';
+                const initialRotation = 3600; // 10 full rotations
+                const finalRotation = outcome === 'heads' ? 0 : 180;
+                coinElement.style.transform = `rotateY(${initialRotation + finalRotation}deg)`;
+            }, 50);
+
+            setTimeout(() => {
+                let winnings = 0;
+                if (outcome === betOption) {
+                    winnings = betAmount * 2;
+                }
+                balance += winnings;
+                balanceElement.textContent = balance;
+                messageElement.textContent = winnings > 0 ? `You won $${winnings}!` : 'You lost!';
+
+                addToHistory(betAmount, betOption, outcome, balance);
+
+                if (balance <= 0) {
+                    messageElement.textContent = 'Refresh and try again!';
+                }
+
+                updateChart(balance); // Update the chart with the new balance
+                isFlipping = false;
+            }, 2000);
+        }
+
+        // Function to add bets to the history
+        function addToHistory(betAmount, betOption, result, balanceAfter) {
+            const profitLossClass = balanceAfter > balance - betAmount ? 'profit' : 'loss';
+            betHistory.unshift({ betAmount, betOption, result, balanceAfter, class: profitLossClass }); // Add to the beginning of the array
+            updateTable();
+        }
+
+        function updateTable() {
+            historyBody.innerHTML = '';
+
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const currentRows = betHistory.slice(start, end);
+
+            currentRows.forEach((row) => {
+                const tr = document.createElement('tr');
+                tr.className = row.class;
+                tr.innerHTML = `
+                    <td>$${row.betAmount}</td>
+                    <td>${row.betOption === 'heads' ? 'Green' : 'Red'}</td>
+                    <td>${row.result === 'heads' ? 'Green' : 'Red'}</td>
+                    <td>$${row.balanceAfter}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+
+            updatePagination();
+        }
+
+        function updatePagination() {
+            paginationElement.innerHTML = '';
+            const totalPages = Math.ceil(betHistory.length / rowsPerPage);
+
+            const prevButton = document.createElement('button');
+            prevButton.textContent = '<';
+            prevButton.disabled = currentPage === 1;
+            prevButton.onclick = () => {
+                currentPage--;
+                updateTable();
+            };
+            paginationElement.appendChild(prevButton);
+
+            for (let i = 1; i <= totalPages; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = i === currentPage ? 'active' : '';
+                pageButton.onclick = () => {
+                    currentPage = i;
+                    updateTable();
+                };
+                paginationElement.appendChild(pageButton);
+            }
+
+            const nextButton = document.createElement('button');
+            nextButton.textContent = '>';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.onclick = () => {
+                currentPage++;
+                updateTable();
+            };
+            paginationElement.appendChild(nextButton);
+        }
+
+        // Function to update the chart with new balance data
+        function updateChart(newBalance) {
+            balanceData.push(newBalance);
+            balanceLabels.push(`Bet ${balanceData.length - 1}`);
+
+            // Update the chart color based on the balance
+            const chartColor = newBalance > startingBalance ? '#4CAF50' : '#FF0000';
+            balanceChart.data.datasets[0].borderColor = chartColor;
+            balanceChart.data.datasets[0].backgroundColor = `rgba(${newBalance > startingBalance ? '76, 175, 80' : '255, 0, 0'}, 0.2)`;
+
+            balanceChart.update();
+        }
+    </script>
+</body>
+</html>
